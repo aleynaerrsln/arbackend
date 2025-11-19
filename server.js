@@ -72,7 +72,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('═══════════════════════════════════════════════');
   console.log(`🚀 Server ${config.NODE_ENV} modunda çalışıyor`);
   console.log(`📡 Port: ${PORT}`);
-  console.log(`🌐 Local: http://localhost:${PORT}`);
+  console.log(`🌐 Locall: http://localhost:${PORT}`);
   console.log(`🌐 Network: http://172.20.10.12:${PORT}`);
   console.log('═══════════════════════════════════════════════');
 });
