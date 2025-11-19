@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../middleware/uploadMiddleware');
+const { uploadModel, uploadVideo } = require('../middleware/uploadMiddleware');
 const {
   getAllModels,
   getModelsByRestaurant,
   getModelById,
   createModel,
+  createModelFromVideo,
   deleteModel,
   incrementViewCount
 } = require('../controllers/modelController');
@@ -13,7 +14,11 @@ const {
 // Routes
 router.route('/')
   .get(getAllModels)                              // GET /api/models
-  .post(upload.single('modelFile'), createModel); // POST /api/models (file upload)
+  .post(uploadModel, createModel);                // POST /api/models (file upload)
+
+// YENİ: Video'dan 3D model oluştur ✨
+router.route('/from-video')
+  .post(uploadVideo, createModelFromVideo);       // POST /api/models/from-video
 
 router.route('/:id')
   .get(getModelById)      // GET /api/models/:id

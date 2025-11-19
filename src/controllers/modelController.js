@@ -2,6 +2,7 @@ const Model3D = require('../models/Model3D');
 const Restaurant = require('../models/Restaurant');
 const fs = require('fs');
 const path = require('path');
+const { processVideoTo3D } = require('../services/videoProcessing');
 
 // @desc    Tüm 3D modelleri getir
 // @route   GET /api/models
@@ -138,6 +139,103 @@ exports.createModel = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Model oluşturulurken hata oluştu',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Video'dan 3D model oluştur (YENİ ENDPOINT) ✨
+// @route   POST /api/models/from-video
+// @access  Private
+exports.createModelFromVideo = async (req, res) => {
+  try {
+    const { restaurantId, name, description, category } = req.body;
+    
+    console.log('📹 Video upload isteği alındı');
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    
+    // Zorunlu alanları kontrol et
+    if (!restaurantId || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restoran ID ve model adı gerekli'
+      });
+    }
+    
+    // Restoran var mı kontrol et
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restoran bulunamadı'
+      });
+    }
+    
+    // Video yüklendi mi kontrol et
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lütfen bir video dosyası yükleyin'
+      });
+    }
+    
+    console.log('✅ Validation başarılı, video işleme başlıyor...');
+    
+    // Video dosya yolu
+    const videoPath = req.file.path;
+    
+    // Video → 3D Model pipeline
+    const result = await processVideoTo3D(videoPath, name);
+    
+    console.log('✅ Pipeline tamamlandı:', result);
+    
+    // Database'e kaydet
+    const model = await Model3D.create({
+      restaurantId,
+      name,
+      description,
+      category,
+      modelUrl: result.modelUrl,
+      fileSize: result.fileSize,
+      format: 'glb',
+      metadata: {
+        vertices: 0, // Python'dan alınabilir
+        polygons: 0,
+        scanDate: new Date(),
+        frameCount: result.frameCount,
+        videoPath: videoPath
+      }
+    });
+    
+    console.log('✅ Model database\'e kaydedildi:', model._id);
+    
+    res.status(201).json({
+      success: true,
+      message: '3D model başarıyla oluşturuldu!',
+      data: {
+        model,
+        processing: {
+          frameCount: result.frameCount,
+          framesDir: result.framesDir
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Video → 3D Model hatası:', error);
+    
+    // Hata olursa yüklenen video'yu sil
+    if (req.file) {
+      const filePath = req.file.path;
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Video işlenirken hata oluştu',
       error: error.message
     });
   }
